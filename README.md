@@ -1,34 +1,286 @@
-# Simple Temporal Demo
+# Content Approval Workflow System
 
-Content approval system demonstrating Temporal workflow orchestration with Quarkus, MySQL, and jOOQ.
+A production-ready content approval system built with Java, Quarkus, and Temporal workflow orchestration.
+
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.java.net/projects/jdk/21/)
+[![Quarkus](https://img.shields.io/badge/Quarkus-3.23.3-blue.svg)](https://quarkus.io/)
+[![Temporal](https://img.shields.io/badge/Temporal-1.25.2-green.svg)](https://temporal.io/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue.svg)](https://www.mysql.com/)
+
+## Overview
+
+This project demonstrates a comprehensive content approval workflow system that leverages Temporal for durable, fault-tolerant workflow orchestration. It showcases modern Java development practices with type-safe database access, comprehensive testing, and production-ready infrastructure.
+
+### Key Features
+
+- **Durable Workflows**: Content approval processes that survive system failures
+- **REST API**: Complete CRUD operations with OpenAPI documentation
+- **Type-Safe Database**: jOOQ integration with MySQL for compile-time query validation
+- **Comprehensive Testing**: Unit tests with TestWorkflowEnvironment and integration tests with TestContainers
+- **Production Ready**: Health checks, monitoring, and containerized deployment
 
 ## Quick Start
 
 ```bash
+# Start infrastructure and development server
 deno task up && deno task dev
+
+# Or manually:
+docker compose -f content-approval/docker-compose.yml up -d
+cd content-approval && mvn quarkus:dev
 ```
 
-## Key Commands
-
-- `deno task status` - Check system health
-- `deno task up` - Start infrastructure (MySQL, Temporal)
-- `deno task dev` - Start development server
-- `deno task test` - Run tests (unit & integration)
-- `deno task build` - Build application
-- `deno task down` - Stop all services
+The application will be available at:
+- **API**: http://localhost:8088
+- **Swagger UI**: http://localhost:8088/q/swagger-ui/
+- **Temporal UI**: http://localhost:8081
+- **Health Checks**: http://localhost:8088/q/health
 
 ## Architecture
 
-- **Backend**: Quarkus 3.23.3 with Temporal workflows
-- **Database**: MySQL 8.0 with TestContainers & jOOQ code generation
-- **Automation**: Deno TypeScript scripts for cross-platform development
+### Technology Stack
 
-## Development URLs
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Framework** | Quarkus 3.23.3 | Cloud-native Java framework |
+| **Orchestration** | Temporal 1.25.2 | Workflow engine for durable processes |
+| **Database** | MySQL 8.0 | Primary data storage |
+| **ORM** | jOOQ 2.1.0 | Type-safe SQL queries |
+| **Migration** | Flyway | Database schema management |
+| **Testing** | TestContainers | Integration testing with real databases |
+| **Build** | Maven + Deno | Java compilation and task automation |
 
-- Application: http://localhost:8088
-- Temporal UI: http://localhost:8081  
-- Dev UI: http://localhost:8088/q/dev/
+### Workflow States
 
-## Prerequisites
+```
+DRAFT → UNDER_REVIEW → APPROVED → PUBLISHED
+   ↓         ↓             ↓
+REJECTED  REJECTED  CHANGES_REQUESTED
+```
 
-- Java 21+, Maven 3.9+, Docker Desktop, Deno 2.0+
+### Project Structure
+
+```
+content-approval/
+├── src/main/java/com/wcygan/contentapproval/
+│   ├── resource/          # REST API endpoints
+│   ├── service/           # Business logic layer
+│   ├── workflow/          # Temporal workflow definitions
+│   ├── activity/          # Temporal activity implementations
+│   ├── dto/              # Data transfer objects
+│   └── config/           # Configuration classes
+├── src/main/resources/
+│   ├── application.properties
+│   └── db/migration/     # Flyway SQL migrations
+├── src/test/java/        # Comprehensive test suite
+├── docker-compose.yml    # Infrastructure services
+└── pom.xml              # Maven dependencies
+```
+
+## API Reference
+
+### Submit Content for Approval
+
+```bash
+curl -X POST http://localhost:8088/content \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Getting Started with Temporal",
+    "content": "Temporal is a developer-first platform for building resilient applications...",
+    "authorId": "author123",
+    "tags": ["temporal", "workflow", "java"]
+  }'
+```
+
+### Check Content Status
+
+```bash
+curl http://localhost:8088/content/1/status
+```
+
+### Approve Content
+
+```bash
+curl -X POST "http://localhost:8088/content/1/approve?approverId=reviewer1&comments=Excellent%20article"
+```
+
+### Reject Content
+
+```bash
+curl -X POST "http://localhost:8088/content/1/reject?reviewerId=reviewer2&reason=Needs%20more%20examples"
+```
+
+## Development
+
+### Prerequisites
+
+- **Java 21+**: OpenJDK or Oracle JDK
+- **Maven 3.9+**: Build automation
+- **Docker**: For database and Temporal services
+- **Deno 2.0+**: Task automation
+
+### Local Development Setup
+
+1. **Clone and Setup**
+   ```bash
+   git clone <repository-url>
+   cd simple-temporal-demo
+   deno task init
+   ```
+
+2. **Start Infrastructure**
+   ```bash
+   deno task up  # Starts MySQL + Temporal
+   ```
+
+3. **Run Development Server**
+   ```bash
+   deno task dev  # Starts Quarkus in dev mode
+   ```
+
+4. **Run Tests**
+   ```bash
+   deno task test           # All tests
+   deno task test:unit      # Unit tests only
+   deno task test:integration  # Integration tests only
+   ```
+
+### Available Tasks
+
+| Command | Description |
+|---------|-------------|
+| `deno task up` | Start all infrastructure services |
+| `deno task down` | Stop all services |
+| `deno task dev` | Start development server with hot reload |
+| `deno task test` | Run comprehensive test suite |
+| `deno task build` | Build application for production |
+| `deno task status` | Check system health |
+| `deno task clean` | Clean build artifacts |
+
+### Database Schema
+
+The system uses a single `content` table with the following key fields:
+
+- `id`: Primary key (auto-increment)
+- `title`: Content title (indexed)
+- `content`: Main content body (full-text indexed)
+- `author_id`: Content author (indexed)
+- `status`: Workflow status (indexed)
+- `tags`: JSON array of tags
+- `temporal_workflow_id`: Links to Temporal execution
+- `created_date` / `updated_date`: Timestamps
+
+## Testing
+
+### Test Strategy
+
+The project implements a comprehensive testing strategy:
+
+- **Unit Tests**: Fast tests using TestWorkflowEnvironment with mocked activities
+- **Integration Tests**: Real database and Temporal integration using TestContainers
+- **End-to-End Tests**: Full API testing with workflow execution
+
+### Running Tests
+
+```bash
+# Run all tests
+mvn test
+
+# Run specific test class
+mvn test -Dtest=ContentApprovalWorkflowTest
+
+# Run integration tests only
+mvn test -Dtest="*IntegrationTest"
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `QUARKUS_DATASOURCE_JDBC_URL` | Database connection URL | `jdbc:mysql://localhost:3306/content_db` | No |
+| `QUARKUS_DATASOURCE_USERNAME` | Database username | `content_user` | No |
+| `QUARKUS_DATASOURCE_PASSWORD` | Database password | `content_pass` | No |
+| `QUARKUS_TEMPORAL_SERVICE_URL` | Temporal service URL | `localhost:7233` | No |
+| `QUARKUS_HTTP_PORT` | Application port | `8088` | No |
+
+### Application Properties
+
+Key configuration options in `application.properties`:
+
+```properties
+# Database
+quarkus.datasource.db-kind=mysql
+quarkus.flyway.migrate-at-start=true
+
+# Temporal
+quarkus.temporal.namespace=content-approval
+quarkus.temporal.start-workers=true
+
+# API
+quarkus.smallrye-openapi.info-title=Content Approval API
+```
+
+## Deployment
+
+### Docker Build
+
+```bash
+# Build native image (production)
+deno task build --native
+
+# Build JVM image (development)
+deno task build
+```
+
+### Production Deployment
+
+1. **Infrastructure**: Deploy MySQL and Temporal services
+2. **Application**: Deploy the containerized Quarkus application
+3. **Health Checks**: Monitor `/q/health` endpoint
+4. **Metrics**: Access metrics via `/q/metrics` (if enabled)
+
+## Monitoring
+
+### Health Checks
+
+The application provides several health check endpoints:
+
+- `/q/health` - Overall health status
+- `/q/health/live` - Liveness probe
+- `/q/health/ready` - Readiness probe
+
+### Logging
+
+Structured logging is configured with:
+
+- Application logs: `DEBUG` level
+- Framework logs: `INFO` level
+- Temporal logs: `INFO` level
+
+## Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** changes: `git commit -m 'feat: add amazing feature'`
+4. **Push** to branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request
+
+### Code Standards
+
+- **Java**: Follow Google Java Style Guide
+- **Testing**: Maintain >90% code coverage
+- **Commits**: Use Conventional Commits format
+- **Documentation**: Update relevant docs with changes
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Links
+
+- **Quarkus**: https://quarkus.io/
+- **Temporal**: https://temporal.io/
+- **jOOQ**: https://www.jooq.org/
+- **TestContainers**: https://www.testcontainers.org/
