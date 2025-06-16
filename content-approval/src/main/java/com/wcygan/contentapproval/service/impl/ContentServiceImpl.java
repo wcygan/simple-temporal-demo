@@ -6,6 +6,8 @@ import com.wcygan.contentapproval.dto.ContentStatusResponse;
 import com.wcygan.contentapproval.dto.ContentSubmissionRequest;
 import com.wcygan.contentapproval.dto.WorkflowConfiguration;
 import com.wcygan.contentapproval.generated.tables.records.ContentRecord;
+import com.wcygan.contentapproval.logging.LogContext;
+import com.wcygan.contentapproval.logging.OperationLogger;
 import com.wcygan.contentapproval.service.ContentService;
 import com.wcygan.contentapproval.service.WorkflowConfigurationService;
 import com.wcygan.contentapproval.workflow.ContentApprovalState;
@@ -22,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
 
 import static com.wcygan.contentapproval.generated.Tables.CONTENT;
 
@@ -33,6 +36,7 @@ import static com.wcygan.contentapproval.generated.Tables.CONTENT;
 public class ContentServiceImpl implements ContentService {
     
     private static final Logger logger = LoggerFactory.getLogger(ContentServiceImpl.class);
+    private final OperationLogger opLogger = new OperationLogger(logger);
     
     @Inject
     WorkflowClient workflowClient;
@@ -46,7 +50,18 @@ public class ContentServiceImpl implements ContentService {
     @Override
     @Transactional
     public ContentApprovalResponse submitContentForApproval(ContentSubmissionRequest request) {
-        logger.info("Submitting content for approval: {}", request);
+        LogContext context = LogContext.create()
+            .userId(request.getAuthorId())
+            .operation("submitContentForApproval")
+            .field("titleLength", request.getTitle() != null ? request.getTitle().length() : 0)
+            .field("contentLength", request.getContent() != null ? request.getContent().length() : 0);
+        
+        opLogger.operationStarted("Content submission", context);
+        
+        // Debug expensive request object logging
+        opLogger.debugExpensive("Content submission request details", context, request);
+        
+        long startTime = System.currentTimeMillis();
         
         try {
             // Create content record in database
@@ -64,10 +79,13 @@ public class ContentServiceImpl implements ContentService {
             content.store();
             Long contentId = content.getId();
             
-            logger.info("Created content record with ID: {}", contentId);
+            // Update context with content ID
+            context.contentId(contentId);
+            opLogger.operationCompleted("Content record creation", context);
             
             // Generate workflow ID
             String workflowId = String.format("content-approval-%d-%d", contentId, System.currentTimeMillis());
+            context.workflowId(workflowId);
             
             // Create workflow configuration
             WorkflowConfiguration configuration = new WorkflowConfiguration(
@@ -88,22 +106,30 @@ public class ContentServiceImpl implements ContentService {
             ContentApprovalWorkflow workflow = workflowClient.newWorkflowStub(
                     ContentApprovalWorkflow.class, workflowOptions);
             
-            // Start workflow asynchronously
-            WorkflowClient.start(workflow::processContentApproval, contentId, request.getAuthorId(), configuration);
+            // Start workflow asynchronously using the 3-parameter method explicitly
+            CompletableFuture<String> workflowFuture = WorkflowClient.execute(
+                () -> workflow.processContentApproval(contentId, request.getAuthorId(), configuration));
             
-            logger.info("Started content approval workflow: {} for content: {}", workflowId, contentId);
+            long duration = System.currentTimeMillis() - startTime;
+            opLogger.operationCompleted("Content approval workflow start", context, duration);
+            
+            // Audit event for content submission
+            opLogger.auditEvent("Content submitted for approval", context);
             
             return ContentApprovalResponse.success(contentId, workflowId);
             
         } catch (Exception e) {
-            logger.error("Error submitting content for approval: {}", request, e);
+            long duration = System.currentTimeMillis() - startTime;
+            opLogger.operationFailed("Content submission", context.duration(duration), 
+                "System error during submission", e);
             return ContentApprovalResponse.error(null, "Failed to submit content for approval: " + e.getMessage());
         }
     }
     
     @Override
     public ContentStatusResponse getContentStatus(Long contentId) {
-        logger.info("Getting content status for ID: {}", contentId);
+        LogContext context = LogContext.withContentId(contentId).operation("getContentStatus");
+        opLogger.operationStarted("Content status query", context);
         
         try {
             // Get content record from database
@@ -112,19 +138,24 @@ public class ContentServiceImpl implements ContentService {
                     .fetchOne();
             
             if (content == null) {
-                logger.warn("Content not found with ID: {}", contentId);
+                opLogger.businessRuleViolation("Content existence", context, "Content not found");
                 return ContentStatusResponse.notFound(contentId);
             }
+            
+            context.status(content.getStatus());
             
             String workflowId = content.getTemporalWorkflowId();
             if (workflowId == null) {
                 // Content exists but no workflow started
+                opLogger.operationCompleted("Content status query (no workflow)", context);
                 ContentStatusResponse response = new ContentStatusResponse();
                 response.setContentId(contentId);
                 response.setStatus(content.getStatus());
                 response.setComplete(false);
                 return response;
             }
+            
+            context.workflowId(workflowId);
             
             // Query workflow state
             try {
@@ -148,21 +179,29 @@ public class ContentServiceImpl implements ContentService {
             }
             
         } catch (Exception e) {
-            logger.error("Error getting content status for ID: {}", contentId, e);
+            opLogger.operationFailed("Content status query", context, 
+                "Database error during status query", e);
             return ContentStatusResponse.notFound(contentId);
         }
     }
     
     @Override
     public boolean approveContent(Long contentId, String approverId, String comments) {
-        logger.info("Approving content {} by reviewer {}", contentId, approverId);
+        LogContext context = LogContext.withContentId(contentId)
+            .userId(approverId)
+            .operation("approveContent")
+            .field("hasComments", comments != null && !comments.trim().isEmpty());
+        
+        opLogger.operationStarted("Content approval", context);
         
         try {
             String workflowId = getWorkflowIdForContent(contentId);
             if (workflowId == null) {
-                logger.error("No workflow found for content ID: {}", contentId);
+                opLogger.businessRuleViolation("Workflow existence", context, "No workflow found for content");
                 return false;
             }
+            
+            context.workflowId(workflowId);
             
             // Send approval signal to workflow
             ContentApprovalWorkflow workflow = workflowClient.newWorkflowStub(
@@ -170,25 +209,33 @@ public class ContentServiceImpl implements ContentService {
             
             workflow.approve(approverId, comments);
             
-            logger.info("Approval signal sent for content {} by reviewer {}", contentId, approverId);
+            opLogger.auditEvent("Content approval signal sent", context);
+            opLogger.operationCompleted("Content approval", context);
             return true;
             
         } catch (Exception e) {
-            logger.error("Error approving content {} by reviewer {}", contentId, approverId, e);
+            opLogger.operationFailed("Content approval", context, "System error during approval", e);
             return false;
         }
     }
     
     @Override
     public boolean rejectContent(Long contentId, String reviewerId, String reason) {
-        logger.info("Rejecting content {} by reviewer {}", contentId, reviewerId);
+        LogContext context = LogContext.withContentId(contentId)
+            .userId(reviewerId)
+            .operation("rejectContent")
+            .field("hasReason", reason != null && !reason.trim().isEmpty());
+        
+        opLogger.operationStarted("Content rejection", context);
         
         try {
             String workflowId = getWorkflowIdForContent(contentId);
             if (workflowId == null) {
-                logger.error("No workflow found for content ID: {}", contentId);
+                opLogger.businessRuleViolation("Workflow existence", context, "No workflow found for content");
                 return false;
             }
+            
+            context.workflowId(workflowId);
             
             // Send rejection signal to workflow
             ContentApprovalWorkflow workflow = workflowClient.newWorkflowStub(
@@ -196,25 +243,33 @@ public class ContentServiceImpl implements ContentService {
             
             workflow.reject(reviewerId, reason);
             
-            logger.info("Rejection signal sent for content {} by reviewer {}", contentId, reviewerId);
+            opLogger.auditEvent("Content rejection signal sent", context.errorReason(reason));
+            opLogger.operationCompleted("Content rejection", context);
             return true;
             
         } catch (Exception e) {
-            logger.error("Error rejecting content {} by reviewer {}", contentId, reviewerId, e);
+            opLogger.operationFailed("Content rejection", context, "System error during rejection", e);
             return false;
         }
     }
     
     @Override
     public boolean requestChanges(Long contentId, String reviewerId, String changeRequests) {
-        logger.info("Requesting changes for content {} by reviewer {}", contentId, reviewerId);
+        LogContext context = LogContext.withContentId(contentId)
+            .userId(reviewerId)
+            .operation("requestChanges")
+            .field("hasChangeRequests", changeRequests != null && !changeRequests.trim().isEmpty());
+        
+        opLogger.operationStarted("Change request", context);
         
         try {
             String workflowId = getWorkflowIdForContent(contentId);
             if (workflowId == null) {
-                logger.error("No workflow found for content ID: {}", contentId);
+                opLogger.businessRuleViolation("Workflow existence", context, "No workflow found for content");
                 return false;
             }
+            
+            context.workflowId(workflowId);
             
             // Send change request signal to workflow
             ContentApprovalWorkflow workflow = workflowClient.newWorkflowStub(
@@ -222,11 +277,12 @@ public class ContentServiceImpl implements ContentService {
             
             workflow.requestChanges(reviewerId, changeRequests);
             
-            logger.info("Change request signal sent for content {} by reviewer {}", contentId, reviewerId);
+            opLogger.auditEvent("Change request signal sent", context.field("requestDetails", "present"));
+            opLogger.operationCompleted("Change request", context);
             return true;
             
         } catch (Exception e) {
-            logger.error("Error requesting changes for content {} by reviewer {}", contentId, reviewerId, e);
+            opLogger.operationFailed("Change request", context, "System error during change request", e);
             return false;
         }
     }

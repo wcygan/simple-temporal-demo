@@ -205,9 +205,14 @@ mvn test -Dtest="RestApiIntegrationTest"            # API integration
 
 Integration tests require running services:
 ```bash
-deno task up     # Start MySQL + Temporal services
-deno task status # Verify services are running
+deno task up     # Start MySQL + Temporal services + create namespace
 ```
+
+The `up` command now handles everything automatically:
+- Starts MySQL and Temporal services
+- Creates the `content-approval` namespace
+- Compiles the application
+- Shows test-ready status
 
 ### Performance Benchmarks
 

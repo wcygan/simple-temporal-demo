@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -67,7 +68,8 @@ public class ContentApprovalWorkflowTest {
                 .newWorkflowStub(ContentApprovalWorkflow.class, options);
         
         // Start workflow in background
-        io.temporal.client.WorkflowClient.start(workflow::processContentApproval, 1L, "testAuthor");
+        CompletableFuture<String> future = io.temporal.client.WorkflowClient.execute(
+            () -> workflow.processContentApproval(1L, "testAuthor"));
         
         // Wait for workflow to reach review state
         testEnv.sleep(Duration.ofSeconds(1));
@@ -134,7 +136,8 @@ public class ContentApprovalWorkflowTest {
                 .newWorkflowStub(ContentApprovalWorkflow.class, options);
         
         // Start workflow
-        io.temporal.client.WorkflowClient.start(workflow::processContentApproval, 2L, "testAuthor2");
+        CompletableFuture<String> future2 = io.temporal.client.WorkflowClient.execute(
+            () -> workflow.processContentApproval(2L, "testAuthor2"));
         
         // Wait for workflow to reach review state
         testEnv.sleep(Duration.ofSeconds(1));
@@ -230,7 +233,8 @@ public class ContentApprovalWorkflowTest {
                 .newWorkflowStub(ContentApprovalWorkflow.class, options);
         
         // Start workflow
-        io.temporal.client.WorkflowClient.start(workflow::processContentApproval, 6L, "testAuthor6");
+        CompletableFuture<String> future3 = io.temporal.client.WorkflowClient.execute(
+            () -> workflow.processContentApproval(6L, "testAuthor6"));
         
         // Wait for workflow to reach review state
         testEnv.sleep(Duration.ofSeconds(1));

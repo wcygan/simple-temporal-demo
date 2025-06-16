@@ -22,6 +22,9 @@ async function main() {
     // Wait for services to be healthy
     await waitForServices();
     
+    // Setup Temporal namespace
+    await setupTemporalNamespace();
+    
     // Start the application
     await startApplication();
     
@@ -33,6 +36,11 @@ async function main() {
     console.log("   • Swagger: http://localhost:8088/q/swagger-ui/");
     console.log("   • Temporal UI: http://localhost:8081");
     console.log("   • MySQL: localhost:3306");
+    console.log("");
+    console.log(bold(cyan("🧪 Ready for testing:")));
+    console.log("   • Integration tests: deno task test --integration");
+    console.log("   • Single test: mvn test -Dtest=\"ActivityFailureIntegrationTest\"");
+    console.log("   • Performance: mvn test -Dtest=\"PerformanceIntegrationTest\"");
     
   } catch (error) {
     console.error(red(`❌ Failed to start system: ${(error as Error).message}`));
@@ -97,6 +105,30 @@ async function waitForServices(): Promise<void> {
   }
   
   throw new Error("Services did not become healthy within the timeout period");
+}
+
+async function setupTemporalNamespace(): Promise<void> {
+  console.log(yellow("🔧 Setting up Temporal namespace..."));
+  
+  try {
+    // Check if namespace already exists
+    const namespaceList = await $`temporal operator namespace list --address localhost:7233`.text();
+    
+    if (namespaceList.includes("content-approval")) {
+      console.log(green("✅ Temporal namespace 'content-approval' already exists"));
+      return;
+    }
+    
+    // Create the namespace
+    await $`temporal operator namespace create content-approval --address localhost:7233`.printCommand();
+    console.log(green("✅ Created Temporal namespace 'content-approval'"));
+    
+  } catch (error) {
+    console.warn(yellow(`⚠️ Temporal namespace setup failed: ${(error as Error).message}`));
+    console.log(cyan("💡 You may need to run manually: temporal operator namespace create content-approval --address localhost:7233"));
+    
+    // Don't fail the entire startup for namespace creation
+  }
 }
 
 async function startApplication(): Promise<void> {
