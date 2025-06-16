@@ -3,10 +3,9 @@ package com.wcygan.contentapproval.workflow;
 import com.wcygan.contentapproval.activity.ContentPersistenceActivity;
 import com.wcygan.contentapproval.activity.ContentValidationActivity;
 import com.wcygan.contentapproval.activity.NotificationActivity;
+import com.wcygan.contentapproval.dto.WorkflowConfiguration;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.workflow.Workflow;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 
 import java.time.Duration;
@@ -60,7 +59,7 @@ public class ContentApprovalWorkflowImpl implements ContentApprovalWorkflow {
     }
     
     @Override
-    public String processContentApproval(Long contentId, String authorId) {
+    public String processContentApproval(Long contentId, String authorId, WorkflowConfiguration configuration) {
         logger.info("Starting content approval workflow for contentId: {}, authorId: {}", contentId, authorId);
         
         // Initialize workflow state
@@ -95,12 +94,8 @@ public class ContentApprovalWorkflowImpl implements ContentApprovalWorkflow {
             logger.info("Content {} moved to under review", contentId);
             
             // Step 5: Wait for approval decision with timeout
-            // Get timeout from config, defaulting to 7 days (604800 seconds) for production
-            Config config = ConfigProvider.getConfig();
-            int reviewTimeoutSeconds = config.getOptionalValue("content.approval.review.timeout.seconds", Integer.class)
-                .orElse(604800); // 7 days in seconds
-            Duration reviewTimeout = Duration.ofSeconds(reviewTimeoutSeconds);
-            logger.info("Waiting for approval decision with timeout of {} seconds", reviewTimeoutSeconds);
+            Duration reviewTimeout = configuration.reviewTimeout();
+            logger.info("Waiting for approval decision with timeout of {} seconds", reviewTimeout.getSeconds());
             
             boolean decisionReceived = Workflow.await(reviewTimeout, 
                 () -> approvalReceived || rejectionReceived || changesRequested);

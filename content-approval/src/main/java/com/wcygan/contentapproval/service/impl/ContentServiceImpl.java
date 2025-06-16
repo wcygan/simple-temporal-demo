@@ -4,8 +4,10 @@ import com.wcygan.contentapproval.config.TemporalWorkerConfig;
 import com.wcygan.contentapproval.dto.ContentApprovalResponse;
 import com.wcygan.contentapproval.dto.ContentStatusResponse;
 import com.wcygan.contentapproval.dto.ContentSubmissionRequest;
+import com.wcygan.contentapproval.dto.WorkflowConfiguration;
 import com.wcygan.contentapproval.generated.tables.records.ContentRecord;
 import com.wcygan.contentapproval.service.ContentService;
+import com.wcygan.contentapproval.service.WorkflowConfigurationService;
 import com.wcygan.contentapproval.workflow.ContentApprovalState;
 import com.wcygan.contentapproval.workflow.ContentApprovalWorkflow;
 import io.temporal.client.WorkflowClient;
@@ -38,6 +40,9 @@ public class ContentServiceImpl implements ContentService {
     @Inject
     DSLContext dsl;
     
+    @Inject
+    WorkflowConfigurationService configurationService;
+    
     @Override
     @Transactional
     public ContentApprovalResponse submitContentForApproval(ContentSubmissionRequest request) {
@@ -64,11 +69,19 @@ public class ContentServiceImpl implements ContentService {
             // Generate workflow ID
             String workflowId = String.format("content-approval-%d-%d", contentId, System.currentTimeMillis());
             
+            // Create workflow configuration
+            WorkflowConfiguration configuration = new WorkflowConfiguration(
+                    configurationService.getReviewTimeout(),
+                    configurationService.isValidationEnabled(),
+                    configurationService.isAutoPublishEnabled(),
+                    configurationService.isNotificationEnabled()
+            );
+            
             // Configure workflow options
             WorkflowOptions workflowOptions = WorkflowOptions.newBuilder()
                     .setWorkflowId(workflowId)
-                    .setTaskQueue(TemporalWorkerConfig.CONTENT_APPROVAL_TASK_QUEUE)
-                    .setWorkflowExecutionTimeout(Duration.ofDays(30)) // 30 days max for approval process
+                    .setTaskQueue(configurationService.getTaskQueue())
+                    .setWorkflowExecutionTimeout(configurationService.getWorkflowExecutionTimeout())
                     .build();
             
             // Create workflow stub and start execution
@@ -76,7 +89,7 @@ public class ContentServiceImpl implements ContentService {
                     ContentApprovalWorkflow.class, workflowOptions);
             
             // Start workflow asynchronously
-            WorkflowClient.start(workflow::processContentApproval, contentId, request.getAuthorId());
+            WorkflowClient.start(workflow::processContentApproval, contentId, request.getAuthorId(), configuration);
             
             logger.info("Started content approval workflow: {} for content: {}", workflowId, contentId);
             

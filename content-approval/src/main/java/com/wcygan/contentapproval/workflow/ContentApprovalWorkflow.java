@@ -1,5 +1,6 @@
 package com.wcygan.contentapproval.workflow;
 
+import com.wcygan.contentapproval.dto.WorkflowConfiguration;
 import io.temporal.workflow.QueryMethod;
 import io.temporal.workflow.SignalMethod;
 import io.temporal.workflow.WorkflowInterface;
@@ -15,10 +16,11 @@ public interface ContentApprovalWorkflow {
      * 
      * @param contentId The ID of the content to process
      * @param authorId The ID of the content author
+     * @param configuration Workflow configuration settings
      * @return The final workflow execution ID
      */
     @WorkflowMethod(name = "ContentApproval")
-    String processContentApproval(Long contentId, String authorId);
+    String processContentApproval(Long contentId, String authorId, WorkflowConfiguration configuration);
     
     /**
      * Signal method to approve content.
