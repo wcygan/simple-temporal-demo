@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: content-mysql
+    environment:
+      MYSQL_DATABASE: content_db
+      MYSQL_USER: content_user
+      MYSQL_PASSWORD: content_pass
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "content_user", "-pcontent_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: --default-authentication-plugin=mysql_native_password
+
+  temporal:
+    image: temporalio/auto-setup:1.26.2
+    container_name: content-temporal
+    environment:
+      - DB=mysql8
+      - DB_PORT=3306
+      - MYSQL_USER=content_user
+      - MYSQL_PWD=content_pass
+      - MYSQL_SEEDS=mysql
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamicconfig/development.yaml
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    volumes:
+      - ./temporal-config:/etc/temporal/dynamicconfig
+    healthcheck:
+      test: ["CMD", "temporal", "--address", "localhost:7233", "operator", "cluster", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    container_name: content-temporal-ui
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:8080
+    depends_on:
+      - temporal
+    ports:
+      - "8081:8080"
+
+volumes:
+  mysql_data:

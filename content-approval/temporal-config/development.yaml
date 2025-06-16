@@ -1,0 +1,19 @@
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}
+
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+    constraints: {}
+
+frontend.enableUpdateWorkflowExecutionAsyncAccepted:
+  - value: true
+    constraints: {}
+
+system.enableActivityEagerExecution:
+  - value: true
+    constraints: {}
+
+worker.buildIdScavengerEnabled:
+  - value: true
+    constraints: {}
