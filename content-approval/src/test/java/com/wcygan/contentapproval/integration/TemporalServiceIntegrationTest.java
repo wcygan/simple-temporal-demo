@@ -2,6 +2,7 @@ package com.wcygan.contentapproval.integration;
 
 import com.wcygan.contentapproval.IntegrationTestProfile;
 import com.wcygan.contentapproval.config.TemporalWorkerConfig;
+import com.wcygan.contentapproval.generated.tables.records.ContentRecord;
 import com.wcygan.contentapproval.workflow.ContentApprovalState;
 import com.wcygan.contentapproval.workflow.ContentApprovalWorkflow;
 import com.wcygan.contentapproval.workflow.ContentStatus;
@@ -14,15 +15,19 @@ import io.temporal.client.WorkflowOptions;
 import io.temporal.client.WorkflowStub;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static com.wcygan.contentapproval.generated.Tables.CONTENT;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -41,22 +46,35 @@ public class TemporalServiceIntegrationTest {
     @Inject
     WorkflowServiceStubs workflowServiceStubs;
     
+    @Inject
+    DSLContext dsl;
+    
     private static final String TEST_WORKFLOW_ID_PREFIX = "test-temporal-integration-";
     
     @BeforeEach
+    @Transactional
     void setUp() {
         // Ensure we have a working connection to Temporal
         assertNotNull(workflowClient, "WorkflowClient should be injected");
         assertNotNull(workflowServiceStubs, "WorkflowServiceStubs should be injected");
+        
+        // Clean up any test data from previous runs
+        dsl.deleteFrom(CONTENT)
+            .where(CONTENT.AUTHOR_ID.like("temporal-integration-%"))
+            .execute();
     }
     
     @Test
     public void testWorkflowExecutionWithRealTemporalService() throws Exception {
         String workflowId = TEST_WORKFLOW_ID_PREFIX + System.currentTimeMillis();
-        Long contentId = 100L;
         String authorId = "temporal-integration-author";
         
-        logger.info("Starting workflow execution test with workflowId: {}", workflowId);
+        // Create test content first
+        Long contentId = createTestContent(authorId, "Temporal Integration Test Content",
+            "This is comprehensive test content for Temporal service integration testing. " +
+            "It contains sufficient text to pass validation and trigger the full workflow process.");
+        
+        logger.info("Starting workflow execution test with workflowId: {} and contentId: {}", workflowId, contentId);
         
         // Create workflow options
         WorkflowOptions options = WorkflowOptions.newBuilder()
@@ -125,10 +143,14 @@ public class TemporalServiceIntegrationTest {
     @Test
     public void testWorkflowSignalHandling() throws Exception {
         String workflowId = TEST_WORKFLOW_ID_PREFIX + "signal-" + System.currentTimeMillis();
-        Long contentId = 101L;
-        String authorId = "signal-test-author";
+        String authorId = "temporal-integration-signal-author";
         
-        logger.info("Starting signal handling test with workflowId: {}", workflowId);
+        // Create test content
+        Long contentId = createTestContent(authorId, "Signal Test Content",
+            "This content is used to test Temporal signal handling capabilities. " +
+            "It has sufficient text to pass validation and allow for signal testing.");
+        
+        logger.info("Starting signal handling test with workflowId: {} and contentId: {}", workflowId, contentId);
         
         WorkflowOptions options = WorkflowOptions.newBuilder()
                 .setWorkflowId(workflowId)
@@ -177,10 +199,14 @@ public class TemporalServiceIntegrationTest {
     @Test
     public void testWorkflowRejectionSignal() throws Exception {
         String workflowId = TEST_WORKFLOW_ID_PREFIX + "reject-" + System.currentTimeMillis();
-        Long contentId = 102L;
-        String authorId = "reject-test-author";
+        String authorId = "temporal-integration-reject-author";
         
-        logger.info("Starting rejection signal test with workflowId: {}", workflowId);
+        // Create test content
+        Long contentId = createTestContent(authorId, "Rejection Test Content",
+            "This content will be used to test workflow rejection signal handling. " +
+            "The content meets validation requirements to ensure it reaches review state.");
+        
+        logger.info("Starting rejection signal test with workflowId: {} and contentId: {}", workflowId, contentId);
         
         WorkflowOptions options = WorkflowOptions.newBuilder()
                 .setWorkflowId(workflowId)
@@ -229,10 +255,14 @@ public class TemporalServiceIntegrationTest {
     @Test
     public void testWorkflowRequestChangesSignal() throws Exception {
         String workflowId = TEST_WORKFLOW_ID_PREFIX + "changes-" + System.currentTimeMillis();
-        Long contentId = 103L;
-        String authorId = "changes-test-author";
+        String authorId = "temporal-integration-changes-author";
         
-        logger.info("Starting request changes signal test with workflowId: {}", workflowId);
+        // Create test content
+        Long contentId = createTestContent(authorId, "Changes Request Test Content",
+            "This content tests the request changes signal functionality of the workflow. " +
+            "It contains adequate text to pass initial validation and reach the review stage.");
+        
+        logger.info("Starting request changes signal test with workflowId: {} and contentId: {}", workflowId, contentId);
         
         WorkflowOptions options = WorkflowOptions.newBuilder()
                 .setWorkflowId(workflowId)
@@ -282,10 +312,14 @@ public class TemporalServiceIntegrationTest {
     @Test
     public void testWorkflowHistoryQuerying() throws Exception {
         String workflowId = TEST_WORKFLOW_ID_PREFIX + "history-" + System.currentTimeMillis();
-        Long contentId = 104L;
-        String authorId = "history-test-author";
+        String authorId = "temporal-integration-history-author";
         
-        logger.info("Starting workflow history test with workflowId: {}", workflowId);
+        // Create test content
+        Long contentId = createTestContent(authorId, "History Test Content",
+            "This content is used to test workflow history querying capabilities. " +
+            "It includes sufficient text to complete the entire workflow process.");
+        
+        logger.info("Starting workflow history test with workflowId: {} and contentId: {}", workflowId, contentId);
         
         WorkflowOptions options = WorkflowOptions.newBuilder()
                 .setWorkflowId(workflowId)
@@ -325,8 +359,12 @@ public class TemporalServiceIntegrationTest {
         // Start multiple workflows concurrently
         for (int i = 0; i < numWorkflows; i++) {
             String workflowId = TEST_WORKFLOW_ID_PREFIX + "concurrent-" + i + "-" + System.currentTimeMillis();
-            Long contentId = 200L + i;
-            String authorId = "concurrent-author-" + i;
+            String authorId = "temporal-integration-concurrent-" + i;
+            
+            // Create test content for each workflow
+            Long contentId = createTestContent(authorId, "Concurrent Test Content " + i,
+                "This is test content for concurrent workflow execution test #" + i + ". " +
+                "It contains sufficient text to validate and process through the workflow.");
             
             WorkflowOptions options = WorkflowOptions.newBuilder()
                     .setWorkflowId(workflowId)
@@ -358,5 +396,22 @@ public class TemporalServiceIntegrationTest {
         }
         
         logger.info("All {} concurrent workflows completed successfully", numWorkflows);
+    }
+    
+    /**
+     * Helper method to create test content in the database.
+     */
+    @Transactional
+    public Long createTestContent(String authorId, String title, String content) {
+        ContentRecord record = dsl.newRecord(CONTENT);
+        record.setTitle(title);
+        record.setContent(content);
+        record.setAuthorId(authorId);
+        record.setStatus("DRAFT");
+        record.setCreatedDate(LocalDateTime.now());
+        record.setUpdatedDate(LocalDateTime.now());
+        
+        record.store();
+        return record.getId();
     }
 }

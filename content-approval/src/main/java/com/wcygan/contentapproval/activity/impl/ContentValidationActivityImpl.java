@@ -1,11 +1,15 @@
 package com.wcygan.contentapproval.activity.impl;
 
 import com.wcygan.contentapproval.activity.ContentValidationActivity;
+import com.wcygan.contentapproval.exception.ContentNotFoundException;
+import com.wcygan.contentapproval.exception.ContentValidationException;
+import com.wcygan.contentapproval.exception.ContentPersistenceException;
 import com.wcygan.contentapproval.generated.tables.records.ContentRecord;
 import io.temporal.activity.Activity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jooq.DSLContext;
+import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,8 +60,7 @@ public class ContentValidationActivityImpl implements ContentValidationActivity 
                     .fetchOne();
             
             if (content == null) {
-                logger.error("Content not found with ID: {}", contentId);
-                return false;
+                throw new ContentNotFoundException(contentId);
             }
             
             // Perform all validation checks
@@ -72,9 +75,15 @@ public class ContentValidationActivityImpl implements ContentValidationActivity 
             logger.info("Content validation completed for ID: {}, result: {}", contentId, isValid);
             return isValid;
             
+        } catch (ContentNotFoundException e) {
+            logger.warn("Content not found during validation: {}", e.getMessage());
+            throw e;
+        } catch (DataAccessException e) {
+            logger.error("Database error during content validation for ID: {}", contentId, e);
+            throw new ContentPersistenceException("Failed to access content for validation", e);
         } catch (Exception e) {
-            logger.error("Error validating content with ID: {}", contentId, e);
-            throw new RuntimeException("Content validation failed", e);
+            logger.error("Unexpected error validating content with ID: {}", contentId, e);
+            throw new ContentValidationException("Content validation failed due to unexpected error", e);
         }
     }
     

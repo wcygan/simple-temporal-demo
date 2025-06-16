@@ -1,12 +1,15 @@
 package com.wcygan.contentapproval.activity.impl;
 
 import com.wcygan.contentapproval.activity.ContentPersistenceActivity;
+import com.wcygan.contentapproval.exception.ContentNotFoundException;
+import com.wcygan.contentapproval.exception.ContentPersistenceException;
 import com.wcygan.contentapproval.generated.tables.records.ContentRecord;
 import io.temporal.activity.Activity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.jooq.DSLContext;
+import org.jooq.exception.DataAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,14 +43,20 @@ public class ContentPersistenceActivityImpl implements ContentPersistenceActivit
                     .execute();
             
             if (updated == 0) {
-                throw new RuntimeException("Content not found with ID: " + contentId);
+                throw new ContentNotFoundException(contentId);
             }
             
             logger.info("Successfully linked content {} to workflow {}", contentId, workflowId);
             
+        } catch (ContentNotFoundException e) {
+            logger.warn("Content not found when linking to workflow: {}", e.getMessage());
+            throw e;
+        } catch (DataAccessException e) {
+            logger.error("Database error linking content {} to workflow {}", contentId, workflowId, e);
+            throw new ContentPersistenceException("Failed to link content to workflow due to database error", e);
         } catch (Exception e) {
-            logger.error("Error linking content {} to workflow {}", contentId, workflowId, e);
-            throw new RuntimeException("Failed to link content to workflow", e);
+            logger.error("Unexpected error linking content {} to workflow {}", contentId, workflowId, e);
+            throw new ContentPersistenceException("Failed to link content to workflow", e);
         }
     }
     
@@ -66,14 +75,20 @@ public class ContentPersistenceActivityImpl implements ContentPersistenceActivit
                     .execute();
             
             if (updated == 0) {
-                throw new RuntimeException("Content not found with ID: " + contentId);
+                throw new ContentNotFoundException(contentId);
             }
             
             logger.info("Successfully updated content {} status to {}", contentId, status);
             
+        } catch (ContentNotFoundException e) {
+            logger.warn("Content not found when updating status: {}", e.getMessage());
+            throw e;
+        } catch (DataAccessException e) {
+            logger.error("Database error updating content {} status to {}", contentId, status, e);
+            throw new ContentPersistenceException("Failed to update content status due to database error", e);
         } catch (Exception e) {
-            logger.error("Error updating content {} status to {}", contentId, status, e);
-            throw new RuntimeException("Failed to update content status", e);
+            logger.error("Unexpected error updating content {} status to {}", contentId, status, e);
+            throw new ContentPersistenceException("Failed to update content status", e);
         }
     }
     
@@ -92,14 +107,20 @@ public class ContentPersistenceActivityImpl implements ContentPersistenceActivit
                     .execute();
             
             if (updated == 0) {
-                throw new RuntimeException("Content not found with ID: " + contentId);
+                throw new ContentNotFoundException(contentId);
             }
             
             logger.info("Successfully published content {}", contentId);
             
+        } catch (ContentNotFoundException e) {
+            logger.warn("Content not found when publishing: {}", e.getMessage());
+            throw e;
+        } catch (DataAccessException e) {
+            logger.error("Database error publishing content {}", contentId, e);
+            throw new ContentPersistenceException("Failed to publish content due to database error", e);
         } catch (Exception e) {
-            logger.error("Error publishing content {}", contentId, e);
-            throw new RuntimeException("Failed to publish content", e);
+            logger.error("Unexpected error publishing content {}", contentId, e);
+            throw new ContentPersistenceException("Failed to publish content", e);
         }
     }
     

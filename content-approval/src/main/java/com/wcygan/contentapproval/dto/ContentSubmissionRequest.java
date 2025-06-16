@@ -18,7 +18,7 @@ public class ContentSubmissionRequest {
     private String title;
     
     @NotBlank(message = "Content is required")
-    @Size(min = 50, max = 50000, message = "Content must be between 50 and 50000 characters")
+    @Size(min = 10, max = 50000, message = "Content must be between 10 and 50000 characters")
     @JsonProperty("content")
     private String content;
     
