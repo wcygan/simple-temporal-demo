@@ -49,20 +49,19 @@ Tests complete REST API integration:
 ## Prerequisites
 
 ### Infrastructure Requirements
-Before running integration tests, ensure the following services are running:
+Before running integration tests, start all required services with one command:
 
 ```bash
-# Start infrastructure services
+# Start everything (MySQL + Temporal + namespace creation)
 deno task up
-
-# Verify services are running
-deno task status
 ```
 
-Required services:
+This automatically:
 - **MySQL Database** (port 3306) - for persistent storage
-- **Temporal Service** (port 7233) - for workflow orchestration
+- **Temporal Service** (port 7233) - for workflow orchestration  
 - **Temporal UI** (port 8081) - for workflow monitoring
+- **Temporal Namespace** - creates `content-approval` namespace
+- **Application Compilation** - generates jOOQ classes
 
 ### Docker Requirements
 Integration tests use MySQL TestContainers which require Docker:
