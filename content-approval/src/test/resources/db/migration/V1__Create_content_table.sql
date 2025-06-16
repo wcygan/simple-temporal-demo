@@ -1,14 +1,14 @@
--- H2 compatible version of content table migration for testing
+-- MySQL compatible version of content table migration
 CREATE TABLE content (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    content CLOB NOT NULL,
+    content LONGTEXT NOT NULL,
     author_id VARCHAR(100) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
-    tags CLOB DEFAULT '[]',
+    tags TEXT,
     temporal_workflow_id VARCHAR(255),
     created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Create indexes for performance
