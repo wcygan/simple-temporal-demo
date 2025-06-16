@@ -16,7 +16,7 @@ This project demonstrates a comprehensive content approval workflow system that 
 - **Durable Workflows**: Content approval processes that survive system failures
 - **REST API**: Complete CRUD operations with OpenAPI documentation
 - **Type-Safe Database**: jOOQ integration with MySQL for compile-time query validation
-- **Comprehensive Testing**: Unit tests with TestWorkflowEnvironment and integration tests with TestContainers
+- **Comprehensive Testing**: Unit tests with TestWorkflowEnvironment, activity failure testing, performance testing, resilience testing, and REST API integration tests with TestContainers
 - **Production Ready**: Health checks, monitoring, and containerized deployment
 
 ## Quick Start
@@ -140,9 +140,10 @@ curl -X POST "http://localhost:8088/content/1/reject?reviewerId=reviewer2&reason
 
 4. **Run Tests**
    ```bash
-   deno task test           # All tests
-   deno task test:unit      # Unit tests only
-   deno task test:integration  # Integration tests only
+   deno task test                    # All tests
+   deno task test --unit            # Unit tests only  
+   deno task test --integration     # Integration tests only
+   deno task test --coverage        # With coverage reports
    ```
 
 ### Available Tasks
@@ -174,24 +175,46 @@ The system uses a single `content` table with the following key fields:
 
 ### Test Strategy
 
-The project implements a comprehensive testing strategy:
+The project implements a comprehensive 5-category integration testing strategy:
 
 - **Unit Tests**: Fast tests using TestWorkflowEnvironment with mocked activities
-- **Integration Tests**: Real database and Temporal integration using TestContainers
-- **End-to-End Tests**: Full API testing with workflow execution
+- **Temporal Service Integration**: Real Temporal service testing with workflow execution, signals, and queries
+- **Activity Failure Testing**: Comprehensive failure scenario testing with retry behavior and error handling  
+- **Performance Testing**: Load testing with 20+ concurrent workflows, memory monitoring, and latency analysis
+- **Resilience Testing**: Worker restart simulation, high failure rates, timeout handling, and resource exhaustion
+- **REST API Integration**: End-to-end API testing with complete workflow integration
 
 ### Running Tests
 
 ```bash
-# Run all tests
-mvn test
+# Run all tests with Deno automation
+deno task test                    # All tests
+deno task test --unit            # Unit tests only
+deno task test --integration     # All integration tests
+deno task test --coverage        # With coverage reports
 
-# Run specific test class
-mvn test -Dtest=ContentApprovalWorkflowTest
-
-# Run integration tests only
-mvn test -Dtest="*IntegrationTest"
+# Run specific integration test categories
+mvn test -Dtest="TemporalServiceIntegrationTest"    # Real Temporal integration
+mvn test -Dtest="ActivityFailureIntegrationTest"    # Failure scenarios
+mvn test -Dtest="PerformanceIntegrationTest"        # Performance/load testing
+mvn test -Dtest="ResilienceIntegrationTest"         # Resilience scenarios
+mvn test -Dtest="RestApiIntegrationTest"            # API integration
 ```
+
+### Test Infrastructure Requirements
+
+Integration tests require running services:
+```bash
+deno task up     # Start MySQL + Temporal services
+deno task status # Verify services are running
+```
+
+### Performance Benchmarks
+
+- **Throughput**: > 0.1 workflows/second under load
+- **Latency**: < 30 seconds average, < 60 seconds P95  
+- **Memory**: < 10MB per workflow
+- **Concurrency**: Support 20+ concurrent workflows
 
 ## Configuration
 

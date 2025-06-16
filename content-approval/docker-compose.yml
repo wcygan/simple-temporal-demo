@@ -26,8 +26,8 @@ services:
     environment:
       - DB=mysql8
       - DB_PORT=3306
-      - MYSQL_USER=content_user
-      - MYSQL_PWD=content_pass
+      - MYSQL_USER=root
+      - MYSQL_PWD=root
       - MYSQL_SEEDS=mysql
       - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/dynamicconfig/development.yaml
     depends_on:
