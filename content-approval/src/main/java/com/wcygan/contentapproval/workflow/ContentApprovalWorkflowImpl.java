@@ -186,17 +186,6 @@ public class ContentApprovalWorkflowImpl implements ContentApprovalWorkflow {
         return workflowId;
     }
     
-    @Override
-    public String processContentApproval(Long contentId, String authorId) {
-        // Create default configuration for backward compatibility with tests
-        WorkflowConfiguration defaultConfig = new WorkflowConfiguration(
-            Duration.ofDays(7), // 7 day review timeout
-            true,  // validation enabled
-            true,  // auto-publish enabled
-            true   // notification enabled
-        );
-        return processContentApproval(contentId, authorId, defaultConfig);
-    }
     
     @Override
     public void approve(String approverId, String comments) {

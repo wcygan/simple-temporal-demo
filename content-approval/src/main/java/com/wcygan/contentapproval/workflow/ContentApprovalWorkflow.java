@@ -23,23 +23,31 @@ public interface ContentApprovalWorkflow {
     String processContentApproval(Long contentId, String authorId, WorkflowConfiguration configuration);
     
     /**
-     * Backward compatibility method for tests.
-     * Uses default configuration settings.
+     * Helper method for tests.
+     * Creates default configuration settings for backward compatibility.
      * 
-     * @param contentId The ID of the content to process
-     * @param authorId The ID of the content author
-     * @return The final workflow execution ID
+     * @return Default WorkflowConfiguration
      */
-    @WorkflowMethod(name = "ContentApprovalDefault")
-    default String processContentApproval(Long contentId, String authorId) {
-        // Create default configuration for backward compatibility
-        WorkflowConfiguration defaultConfig = new WorkflowConfiguration(
+    static WorkflowConfiguration createDefaultConfiguration() {
+        return new WorkflowConfiguration(
             java.time.Duration.ofDays(7), // 7 day review timeout
             true,  // validation enabled
             true,  // auto-publish enabled
             true   // notification enabled
         );
-        return processContentApproval(contentId, authorId, defaultConfig);
+    }
+    
+    /**
+     * Backward compatibility method for tests.
+     * Uses default configuration settings.
+     * 
+     * @param workflow The workflow instance to call
+     * @param contentId The ID of the content to process
+     * @param authorId The ID of the content author
+     * @return The final workflow execution ID
+     */
+    static String processWithDefaults(ContentApprovalWorkflow workflow, Long contentId, String authorId) {
+        return workflow.processContentApproval(contentId, authorId, createDefaultConfiguration());
     }
     
     /**

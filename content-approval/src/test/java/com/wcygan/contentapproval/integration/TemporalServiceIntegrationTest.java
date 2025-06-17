@@ -90,7 +90,7 @@ public class TemporalServiceIntegrationTest {
         // Execute workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> {
             try {
-                return workflow.processContentApproval(contentId, authorId);
+                return ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  authorId);
             } catch (Exception e) {
                 logger.error("Workflow execution failed", e);
                 throw new RuntimeException(e);
@@ -163,7 +163,7 @@ public class TemporalServiceIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, authorId));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  authorId));
         
         // Wait for workflow to reach review state
         Thread.sleep(3000);
@@ -219,7 +219,7 @@ public class TemporalServiceIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, authorId));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  authorId));
         
         // Wait for workflow to reach review state
         Thread.sleep(3000);
@@ -275,7 +275,7 @@ public class TemporalServiceIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, authorId));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  authorId));
         
         // Wait for workflow to reach review state
         Thread.sleep(3000);
@@ -331,7 +331,7 @@ public class TemporalServiceIntegrationTest {
                 ContentApprovalWorkflow.class, options);
         
         // Execute complete workflow
-        String result = workflow.processContentApproval(contentId, authorId);
+        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  authorId);
         assertNotNull(result);
         
         // Query workflow execution using WorkflowStub
@@ -376,7 +376,7 @@ public class TemporalServiceIntegrationTest {
             
             final int index = i;
             futures[i] = CompletableFuture.supplyAsync(() -> 
-                workflows[index].processContentApproval(contentId, authorId));
+                ContentApprovalWorkflow.processWithDefaults(workflows[index], contentId, authorId));
         }
         
         // Wait for all workflows to complete

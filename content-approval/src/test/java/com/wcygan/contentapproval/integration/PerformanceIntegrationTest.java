@@ -97,7 +97,7 @@ public class PerformanceIntegrationTest {
                 
                 final int index = i;
                 CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> 
-                    workflow.processContentApproval(contentIds.get(index), "perf-test-volume-" + index), 
+                    ContentApprovalWorkflow.processWithDefaults(workflow, contentIds.get(index),  "perf-test-volume-" + index), 
                     executor);
                 
                 futures.add(future);
@@ -187,7 +187,7 @@ public class PerformanceIntegrationTest {
             
             final int index = i;
             CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> 
-                workflow.processContentApproval(contentIds.get(index), "perf-test-memory-" + index));
+                ContentApprovalWorkflow.processWithDefaults(workflow, contentIds.get(index),  "perf-test-memory-" + index));
             
             futures.add(future);
         }
@@ -272,7 +272,7 @@ public class PerformanceIntegrationTest {
             
             // Measure workflow execution time
             long startTime = System.currentTimeMillis();
-            String result = workflow.processContentApproval(contentId, "perf-test-latency-" + i);
+            String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "perf-test-latency-" + i);
             long endTime = System.currentTimeMillis();
             
             long latency = endTime - startTime;
@@ -345,7 +345,7 @@ public class PerformanceIntegrationTest {
                 final int index = i;
                 CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
                     try {
-                        String result = workflow.processContentApproval(contentIds.get(index), 
+                        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentIds.get(index), 
                             "perf-test-dbpool-" + index);
                         successCount.incrementAndGet();
                         return result;

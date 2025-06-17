@@ -79,7 +79,15 @@ async function ensureCodeGeneration(): Promise<void> {
 }
 
 async function runUnitTests(options: TestOptions): Promise<void> {
-  console.log(bold(yellow("🏃 Running Unit Tests (H2)")));
+  console.log(bold(yellow("🏃 Running Unit Tests (MySQL TestContainers)")));
+  console.log(dim("Note: All tests now use MySQL for production parity"));
+  
+  // Check Docker status
+  try {
+    await $`docker info`.quiet();
+  } catch {
+    throw new Error("Docker is not running. All tests require Docker for MySQL TestContainers.");
+  }
   
   try {
     let cmd = ["mvn", "test", "-Dtest=!*IntegrationTest"];
@@ -139,7 +147,7 @@ function printHelp(): void {
   console.log("  deno task test [OPTIONS]");
   console.log("");
   console.log("OPTIONS:");
-  console.log("  -u, --unit           Run unit tests only (H2)");
+  console.log("  -u, --unit           Run unit tests only (MySQL TestContainers)");
   console.log("  -i, --integration    Run integration tests only (MySQL TestContainers)");
   console.log("  -c, --coverage       Generate coverage reports");
   console.log("  -v, --verbose        Verbose output");
@@ -152,8 +160,12 @@ function printHelp(): void {
   console.log("  deno task test --coverage         # Run with coverage");
   console.log("");
   console.log("TEST TYPES:");
-  console.log("  Unit Tests:        Fast tests using H2 in-memory database");
+  console.log("  Unit Tests:        Fast tests using MySQL TestContainers (production parity)");
   console.log("  Integration Tests: Full-stack tests using MySQL TestContainers");
+  console.log("");
+  console.log("REQUIREMENTS:");
+  console.log("  - Docker must be running for all tests");
+  console.log("  - MySQL TestContainers provide production-parity testing");
 }
 
 if (import.meta.main) {

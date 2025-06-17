@@ -82,7 +82,7 @@ public class ResilienceIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, "resilience-test-restart"));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "resilience-test-restart"));
         
         // Wait a moment for workflow to start
         Thread.sleep(2000);
@@ -165,7 +165,7 @@ public class ResilienceIntegrationTest {
                 final int index = i;
                 CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
                     try {
-                        String result = workflow.processContentApproval(contentIds.get(index), 
+                        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentIds.get(index), 
                             "resilience-test-failure-" + index);
                         successCount.incrementAndGet();
                         return result;
@@ -239,7 +239,7 @@ public class ResilienceIntegrationTest {
         
         try {
             // This should complete within timeout or handle timeout gracefully
-            String result = workflow.processContentApproval(contentId, "resilience-test-timeout");
+            String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "resilience-test-timeout");
             
             // If it completes successfully, that's fine too
             assertNotNull(result);
@@ -285,7 +285,7 @@ public class ResilienceIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, "resilience-test-signals"));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "resilience-test-signals"));
         
         // Wait for workflow to reach review state
         Thread.sleep(3000);
@@ -398,7 +398,7 @@ public class ResilienceIntegrationTest {
                 final int index = i;
                 CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
                     try {
-                        String result = workflow.processContentApproval(contentIds.get(index), 
+                        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentIds.get(index), 
                             "resilience-test-resource-" + index);
                         completedCount.incrementAndGet();
                         return result;

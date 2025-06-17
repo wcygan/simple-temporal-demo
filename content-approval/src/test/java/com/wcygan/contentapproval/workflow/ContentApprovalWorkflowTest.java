@@ -69,7 +69,7 @@ public class ContentApprovalWorkflowTest {
         
         // Start workflow in background
         CompletableFuture<String> future = io.temporal.client.WorkflowClient.execute(
-            () -> workflow.processContentApproval(1L, "testAuthor"));
+            () -> ContentApprovalWorkflow.processWithDefaults(workflow, 1L, "testAuthor"));
         
         // Wait for workflow to reach review state
         testEnv.sleep(Duration.ofSeconds(1));
@@ -137,7 +137,7 @@ public class ContentApprovalWorkflowTest {
         
         // Start workflow
         CompletableFuture<String> future2 = io.temporal.client.WorkflowClient.execute(
-            () -> workflow.processContentApproval(2L, "testAuthor2"));
+            () -> ContentApprovalWorkflow.processWithDefaults(workflow, 2L,  "testAuthor2"));
         
         // Wait for workflow to reach review state
         testEnv.sleep(Duration.ofSeconds(1));
@@ -190,7 +190,7 @@ public class ContentApprovalWorkflowTest {
                 .newWorkflowStub(ContentApprovalWorkflow.class, options);
         
         // Start and wait for workflow to complete
-        String result = workflow.processContentApproval(4L, "testAuthor4");
+        String result = ContentApprovalWorkflow.processWithDefaults(workflow, 4L,  "testAuthor4");
         
         // Verify auto-rejection due to validation failure
         ContentApprovalState state = workflow.getWorkflowState();
@@ -234,7 +234,7 @@ public class ContentApprovalWorkflowTest {
         
         // Start workflow
         CompletableFuture<String> future3 = io.temporal.client.WorkflowClient.execute(
-            () -> workflow.processContentApproval(6L, "testAuthor6"));
+            () -> ContentApprovalWorkflow.processWithDefaults(workflow, 6L,  "testAuthor6"));
         
         // Wait for workflow to reach review state
         testEnv.sleep(Duration.ofSeconds(1));

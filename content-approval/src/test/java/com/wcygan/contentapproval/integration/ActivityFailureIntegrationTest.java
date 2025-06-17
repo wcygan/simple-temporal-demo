@@ -86,7 +86,7 @@ public class ActivityFailureIntegrationTest {
                 ContentApprovalWorkflow.class, options);
         
         // Execute workflow - should complete normally but auto-reject due to validation failure
-        String result = workflow.processContentApproval(contentId, "failure-test-validation");
+        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "failure-test-validation");
         
         assertNotNull(result);
         assertEquals(workflowId, result);
@@ -133,7 +133,7 @@ public class ActivityFailureIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, "failure-test-retry"));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "failure-test-retry"));
         
         // Wait for workflow to process (activities will retry on failures internally)
         Thread.sleep(5000);
@@ -185,7 +185,7 @@ public class ActivityFailureIntegrationTest {
                 ContentApprovalWorkflow.class, options);
         
         // Execute workflow
-        String result = workflow.processContentApproval(contentId, "failure-test-transaction");
+        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "failure-test-transaction");
         
         assertNotNull(result);
         
@@ -236,7 +236,7 @@ public class ActivityFailureIntegrationTest {
             
             final int index = i;
             futures[i] = CompletableFuture.supplyAsync(() -> 
-                workflow.processContentApproval(contentIds[index], "failure-test-concurrent-" + index));
+                ContentApprovalWorkflow.processWithDefaults(workflow, contentIds[index],  "failure-test-concurrent-" + index));
         }
         
         // Wait for all workflows to complete
@@ -285,7 +285,7 @@ public class ActivityFailureIntegrationTest {
                 ContentApprovalWorkflow.class, options);
         
         // Execute workflow - activities have configured timeouts and retries
-        String result = workflow.processContentApproval(contentId, "failure-test-timeout");
+        String result = ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "failure-test-timeout");
         
         assertNotNull(result);
         
@@ -324,7 +324,7 @@ public class ActivityFailureIntegrationTest {
         
         // Start workflow asynchronously
         CompletableFuture<String> workflowResult = CompletableFuture.supplyAsync(() -> 
-            workflow.processContentApproval(contentId, "failure-test-recovery"));
+            ContentApprovalWorkflow.processWithDefaults(workflow, contentId,  "failure-test-recovery"));
         
         // Wait for workflow to reach a stable state
         Thread.sleep(3000);
